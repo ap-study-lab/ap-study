@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AP Study — 応用情報技術者試験 対策サイト
 
-## Getting Started
+応用情報技術者試験(AP)の学習用Webアプリ。過去問ベースの問題とAI作成のオリジナル問題で演習でき、成績・苦手分野・間違えた問題を記録します。スマホブラウザ対応。
 
-First, run the development server:
+## 機能
+
+- **模擬試験(午前)**: 本試験と同じ80問構成(テクノロジ50/マネジメント10/ストラテジ20)、150分タイマー付き。全問解答後にまとめて採点、全問にわかりやすい解説付き
+- **クイック演習(午前)**: 5/10/20問をサクッと演習。1問ごとに即時解説。分野の絞り込み可
+- **午後演習**: 大問単位の長文問題。選択式設問は自動採点、記述式設問は模範解答との比較による自己採点
+- **復習モード**: 最後に解いたとき間違えていた問題だけを解き直し。克服状況も記録
+- **成績・分析**: 通算正答率、大分類・中分類ごとの正答率、苦手分野TOP5、演習履歴
+- **出題フィルタ**: 「過去問のみ / AI問題のみ / すべて」を選択可能
+
+## 問題データについて
+
+- 問題は `src/data/` 配下のJSONで管理
+  - `am/*.json` … 午前問題(現在252問)
+  - `pm/*.json` … 午後問題(現在8大問)
+- `source.type` が `past` の問題は、IPA 応用情報技術者試験の公開過去問題を元にした問題です(出典ラベル付き)。IPAは過去問題の利用を許諾手続不要としています。出典ラベルは代表的な出題回を示したもので、同一・類似の問題が複数回出題されている場合があります。文言は学習用に一部調整しています
+- `source.type` が `original` の問題は、過去問の出題傾向に基づき生成した学習用オリジナル問題です
+- 解説はすべて本サイト用に書き下ろしたものです
+
+### 問題の追加方法
+
+`src/data/am/` のJSONに同じ形式でオブジェクトを追加するだけです(idはユニークにする)。午後問題は `src/data/pm/` に1大問=1ファイルで追加し、`src/lib/questions.ts` のimportに加えます。
+
+## 技術構成
+
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- Supabase (認証 + 学習記録の保存、`ap_` プレフィックスのテーブルを使用)
+- Vercel でホスティング
+
+## 開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` に以下を設定:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## データベース
 
-## Learn More
+Supabase上のテーブル(いずれもRLSで本人のみ読み書き可):
 
-To learn more about Next.js, take a look at the following resources:
+- `ap_sessions` … 演習セッション(モード、正答数、開始/終了時刻)
+- `ap_attempts` … 1問ごとの解答記録(問題ID、分野、正誤、解答日時)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 今後の予定
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [ ] 過去問データの拡充(15年分を目標)
+- [ ] AIチャットの組み込み(サイト内で疑問をその場で質問できるように)
