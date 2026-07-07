@@ -101,7 +101,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
         <h1 className="text-lg font-bold">{pm.title}</h1>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+      <div className="card p-4 sm:p-5">
         <div className="text-xs font-bold text-slate-500 mb-2">問題文</div>
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{pm.scenario}</p>
       </div>
@@ -109,7 +109,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
       {pm.subQuestions.map((sq, idx) => {
         const st = states[sq.id];
         return (
-          <div key={sq.id} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+          <div key={sq.id} className="card p-4 sm:p-5">
             <div className="font-bold text-sm mb-2">設問{idx + 1}</div>
             <p className="text-sm leading-relaxed whitespace-pre-wrap mb-3">{sq.question}</p>
 
@@ -164,7 +164,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
                 {!st.revealed ? (
                   <button
                     onClick={() => update(sq.id, { revealed: true })}
-                    className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold"
+                    className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2 text-sm text-white font-bold shadow-lg shadow-violet-600/25 transition-all hover:brightness-110 active:scale-[0.98]"
                   >
                     模範解答を見る
                   </button>
@@ -216,7 +216,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
         );
       })}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 text-center space-y-3">
+      <div className="card p-4 text-center space-y-3">
         {saved ? (
           <>
             <div className="text-sm font-bold text-emerald-700">
@@ -224,7 +224,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
             </div>
             <button
               onClick={() => router.push("/exam/pm")}
-              className="px-6 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-bold"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-2.5 text-sm text-white font-bold shadow-lg shadow-violet-600/25 transition-all hover:brightness-110 active:scale-[0.98]"
             >
               大問一覧へ戻る
             </button>
@@ -239,7 +239,7 @@ function PmPlayer({ pm }: { pm: PmQuestion }) {
             <button
               onClick={saveResults}
               disabled={!allGraded}
-              className="px-6 py-2.5 rounded-lg bg-violet-600 text-white text-sm font-bold disabled:opacity-40"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-2.5 text-sm text-white font-bold shadow-lg shadow-violet-600/25 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
             >
               結果を記録する
             </button>

@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="max-w-sm mx-auto mt-8">
       <h1 className="text-xl font-bold mb-6 text-center">ログイン</h1>
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-xl border border-slate-200 p-6">
+      <form onSubmit={handleSubmit} className="space-y-4 card p-6">
         <div>
           <label className="block text-sm font-medium mb-1">メールアドレス</label>
           <input
@@ -45,7 +45,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
           />
         </div>
         <div>
@@ -55,14 +55,14 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
           />
         </div>
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button
           type="submit"
           disabled={busy}
-          className="w-full py-2.5 rounded-lg bg-indigo-600 text-white font-bold text-sm disabled:opacity-50"
+          className="btn-primary w-full py-2.5 text-sm"
         >
           {busy ? "ログイン中..." : "ログイン"}
         </button>

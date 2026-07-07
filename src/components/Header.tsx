@@ -24,33 +24,41 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-20 bg-white/75 backdrop-blur-lg border-b border-slate-200/70">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between h-12">
-          <Link href="/" className="font-bold text-indigo-700 whitespace-nowrap">
-            AP Study
+        <div className="flex items-center justify-between h-14">
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white text-[11px] font-black shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform">
+              AP
+            </span>
+            <span className="font-extrabold tracking-tight text-slate-800">
+              Study
+            </span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
             {user ? (
               <>
-                <span className="text-slate-500 hidden sm:inline max-w-40 truncate">
+                <span className="text-slate-400 hidden sm:inline max-w-40 truncate text-xs">
                   {user.email}
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="text-slate-600 hover:text-indigo-700"
+                  className="text-slate-500 hover:text-indigo-700 font-medium transition-colors"
                 >
                   ログアウト
                 </button>
               </>
             ) : (
-              <Link href="/login" className="text-indigo-600 font-medium">
+              <Link
+                href="/login"
+                className="btn-primary px-4 py-1.5 text-sm"
+              >
                 ログイン
               </Link>
             )}
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto -mb-px pb-0">
+        <nav className="flex gap-1.5 overflow-x-auto pb-2 -mt-1">
           {NAV_ITEMS.map((item) => {
             const active =
               item.href === "/"
@@ -60,10 +68,10 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-2 text-sm whitespace-nowrap border-b-2 ${
+                className={`px-3.5 py-1.5 text-sm whitespace-nowrap rounded-full transition-all ${
                   active
-                    ? "border-indigo-600 text-indigo-700 font-medium"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold shadow-md shadow-indigo-600/25"
+                    : "text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 font-medium"
                 }`}
               >
                 {item.label}

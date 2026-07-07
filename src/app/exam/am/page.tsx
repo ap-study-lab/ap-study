@@ -61,26 +61,30 @@ function AmExamInner() {
     <div className="space-y-5">
       <h1 className="text-xl font-bold">午前演習</h1>
 
-      <div className="flex rounded-lg overflow-hidden border border-slate-300">
+      <div className="flex rounded-2xl p-1 bg-slate-200/70 gap-1">
         <button
           onClick={() => setTab("mock")}
-          className={`flex-1 py-2.5 text-sm font-bold ${
-            tab === "mock" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            tab === "mock"
+              ? "bg-white text-indigo-700 shadow-md"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
-          模擬試験 (80問)
+          📝 模擬試験 (80問)
         </button>
         <button
           onClick={() => setTab("quick")}
-          className={`flex-1 py-2.5 text-sm font-bold ${
-            tab === "quick" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            tab === "quick"
+              ? "bg-white text-indigo-700 shadow-md"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
-          クイック演習
+          ⚡ クイック演習
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
+      <div className="card p-5 space-y-5">
         <div>
           <div className="text-sm font-bold mb-2">出題する問題</div>
           <div className="flex gap-2">
@@ -94,10 +98,8 @@ function AmExamInner() {
               <button
                 key={v}
                 onClick={() => setSourceFilter(v)}
-                className={`px-4 py-2 rounded-lg text-sm border ${
-                  sourceFilter === v
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700 font-bold"
-                    : "border-slate-300 bg-white text-slate-600"
+                className={`pill-toggle ${
+                  sourceFilter === v ? "pill-toggle-on" : "pill-toggle-off"
                 }`}
               >
                 {label}
@@ -120,10 +122,8 @@ function AmExamInner() {
                   <button
                     key={n}
                     onClick={() => setQuickCount(n)}
-                    className={`px-4 py-2 rounded-lg text-sm border ${
-                      quickCount === n
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700 font-bold"
-                        : "border-slate-300 bg-white text-slate-600"
+                    className={`pill-toggle ${
+                      quickCount === n ? "pill-toggle-on" : "pill-toggle-off"
                     }`}
                   >
                     {n}問
@@ -146,10 +146,10 @@ function AmExamInner() {
                           on ? prev.filter((x) => x !== c.category) : [...prev, c.category]
                         )
                       }
-                      className={`px-2.5 py-1.5 rounded-full text-xs border ${
+                      className={`px-2.5 py-1.5 rounded-full text-xs border transition-all ${
                         on
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-slate-300 bg-white text-slate-600"
+                          ? "border-transparent bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold shadow-sm"
+                          : "border-slate-300 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
                       }`}
                     >
                       {c.category}
@@ -167,11 +167,8 @@ function AmExamInner() {
           </>
         )}
 
-        <button
-          onClick={start}
-          className="w-full py-3 rounded-lg bg-indigo-600 text-white font-bold"
-        >
-          開始する
+        <button onClick={start} className="btn-primary w-full py-3">
+          開始する 🚀
         </button>
       </div>
     </div>

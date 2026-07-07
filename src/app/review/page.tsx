@@ -70,14 +70,14 @@ function ReviewInner() {
       {amNeed.length > 0 && (
         <button
           onClick={startReview}
-          className="w-full py-3 rounded-lg bg-rose-600 text-white font-bold"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold shadow-lg shadow-rose-500/25 transition-all hover:brightness-110 active:scale-[0.98]"
         >
-          要復習の午前問題 {amNeed.length} 問を解き直す
+          🔁 要復習の午前問題 {amNeed.length} 問を解き直す
         </button>
       )}
 
       {pmNeed.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="card p-4">
           <div className="text-sm font-bold mb-2">要復習の午後問題</div>
           <div className="space-y-1.5">
             {[...new Set(pmNeed.map((s) => s.questionId.split(":")[0]))].map((pmId) => {
@@ -99,19 +99,23 @@ function ReviewInner() {
         </div>
       )}
 
-      <div className="flex rounded-lg overflow-hidden border border-slate-300 text-sm">
+      <div className="flex rounded-2xl p-1 bg-slate-200/70 gap-1 text-sm">
         <button
           onClick={() => setTab("need")}
-          className={`flex-1 py-2 font-bold ${
-            tab === "need" ? "bg-rose-600 text-white" : "bg-white text-slate-600"
+          className={`flex-1 py-2 font-bold rounded-xl transition-all ${
+            tab === "need"
+              ? "bg-white text-rose-600 shadow-md"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           要復習 ({needReview.length})
         </button>
         <button
           onClick={() => setTab("cleared")}
-          className={`flex-1 py-2 font-bold ${
-            tab === "cleared" ? "bg-emerald-600 text-white" : "bg-white text-slate-600"
+          className={`flex-1 py-2 font-bold rounded-xl transition-all ${
+            tab === "cleared"
+              ? "bg-white text-emerald-600 shadow-md"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           克服済み ({cleared.length})
@@ -133,7 +137,7 @@ function ReviewInner() {
               const q = getAmQuestion(s.questionId);
               if (!q) return null;
               return (
-                <div key={s.questionId} className="bg-white border border-slate-200 rounded-lg px-3 py-2.5">
+                <div key={s.questionId} className="card px-3 py-2.5">
                   <div className="text-xs text-slate-400 mb-0.5">
                     {q.category} ・ {s.attempts}回解答 / {s.correctCount}回正解
                   </div>
@@ -148,7 +152,7 @@ function ReviewInner() {
               <Link
                 key={s.questionId}
                 href={`/exam/pm/${pmId}`}
-                className="block bg-white border border-slate-200 rounded-lg px-3 py-2.5 hover:border-violet-400"
+                className="card card-hover block px-3 py-2.5"
               >
                 <div className="text-xs text-slate-400 mb-0.5">午後 ・ {pm.category}</div>
                 <div className="text-sm">{pm.title} の設問</div>

@@ -105,11 +105,11 @@ function StatsInner() {
       <h1 className="text-xl font-bold">成績・分析</h1>
 
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+        <div className="card p-3 text-center">
           <div className="text-2xl font-bold text-indigo-700">{stats.overall.total}</div>
           <div className="text-xs text-slate-500">累計解答数</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+        <div className="card p-3 text-center">
           <div
             className={`text-2xl font-bold ${overallRate >= 60 ? "text-emerald-600" : "text-rose-600"}`}
           >
@@ -117,14 +117,14 @@ function StatsInner() {
           </div>
           <div className="text-xs text-slate-500">通算正答率</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+        <div className="card p-3 text-center">
           <div className="text-2xl font-bold text-violet-600">{sessions.length}</div>
           <div className="text-xs text-slate-500">演習回数</div>
         </div>
       </div>
 
       {stats.weak.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="card p-4">
           <div className="font-bold text-sm mb-1">苦手分野 TOP5</div>
           <p className="text-xs text-slate-400 mb-3">3問以上解いた分野のうち正答率が低い順</p>
           <div className="space-y-2.5">
@@ -140,7 +140,7 @@ function StatsInner() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="card p-4">
         <div className="font-bold text-sm mb-3">大分類別の正答率</div>
         <div className="space-y-2.5">
           {(["T", "M", "S"] as const).map((f) => {
@@ -151,7 +151,7 @@ function StatsInner() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="card p-4">
         <div className="font-bold text-sm mb-3">分野別の正答率 (全分野)</div>
         <div className="space-y-2.5">
           {[...stats.byCategory.entries()].map(([cat, v]) => (
@@ -165,7 +165,7 @@ function StatsInner() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="card p-4">
         <div className="font-bold text-sm mb-3">演習履歴</div>
         {sessions.length === 0 ? (
           <p className="text-sm text-slate-400">完了した演習がまだありません</p>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f4f5fa;
+  --foreground: #1b2036;
 }
 
 @theme inline {
@@ -12,6 +12,42 @@
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(79, 70, 229, 0.08) 1px,
+    transparent 0
+  );
+  background-size: 26px 26px;
   color: var(--foreground);
+}
+
+@layer components {
+  .card {
+    @apply bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-14px_rgba(79,70,229,0.18)];
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_2px_6px_rgba(15,23,42,0.05),0_18px_36px_-14px_rgba(79,70,229,0.3)];
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold shadow-lg shadow-indigo-600/25 transition-all hover:brightness-110 hover:shadow-indigo-600/40 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none disabled:hover:brightness-100;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white font-bold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] disabled:opacity-40;
+  }
+  .grad-text {
+    @apply bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent;
+  }
+  .pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  }
+  .pill-toggle {
+    @apply px-4 py-2 rounded-xl text-sm border font-medium transition-all;
+  }
+  .pill-toggle-on {
+    @apply border-transparent bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold shadow-md shadow-indigo-600/25;
+  }
+  .pill-toggle-off {
+    @apply border-slate-300 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700;
+  }
 }

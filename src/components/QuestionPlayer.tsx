@@ -84,22 +84,34 @@ function ChoiceList({
     <div className="space-y-2">
       {q.choices.map((choice, i) => {
         let cls =
-          "border-slate-200 bg-white hover:border-indigo-400 active:bg-indigo-50";
+          "border-slate-200 bg-white hover:border-indigo-400 hover:-translate-y-px hover:shadow-md hover:shadow-indigo-100 active:bg-indigo-50";
+        let chipCls = "bg-slate-100 text-slate-600";
         if (revealed) {
-          if (i === q.answer) cls = "border-emerald-500 bg-emerald-50";
-          else if (i === selected) cls = "border-rose-400 bg-rose-50";
-          else cls = "border-slate-200 bg-white opacity-70";
+          if (i === q.answer) {
+            cls = "border-emerald-500 bg-emerald-50/80";
+            chipCls = "bg-emerald-500 text-white";
+          } else if (i === selected) {
+            cls = "border-rose-400 bg-rose-50/80";
+            chipCls = "bg-rose-400 text-white";
+          } else {
+            cls = "border-slate-200 bg-white opacity-60";
+          }
         } else if (i === selected) {
-          cls = "border-indigo-600 bg-indigo-50";
+          cls = "border-indigo-600 bg-indigo-50/80 shadow-md shadow-indigo-100";
+          chipCls = "bg-gradient-to-br from-indigo-600 to-violet-600 text-white";
         }
         return (
           <button
             key={i}
             disabled={revealed}
             onClick={() => onSelect(i)}
-            className={`w-full text-left border-2 rounded-lg px-3 py-2.5 text-sm leading-relaxed transition-colors flex gap-2 ${cls}`}
+            className={`w-full text-left border-2 rounded-xl px-3 py-2.5 text-sm leading-relaxed transition-all flex gap-2.5 items-start ${cls}`}
           >
-            <span className="font-bold shrink-0">{CHOICE_LABELS[i]}</span>
+            <span
+              className={`shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold mt-0.5 transition-colors ${chipCls}`}
+            >
+              {CHOICE_LABELS[i]}
+            </span>
             <span className="whitespace-pre-wrap">{choice}</span>
           </button>
         );
@@ -260,14 +272,14 @@ export default function QuestionPlayer({
         </div>
       </div>
 
-      <div className="h-1.5 bg-slate-200 rounded-full mb-4 overflow-hidden">
+      <div className="h-2 bg-slate-200/80 rounded-full mb-4 overflow-hidden">
         <div
-          className="h-full bg-indigo-500 rounded-full transition-all"
+          className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all"
           style={{ width: `${(answered / questions.length) * 100}%` }}
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <div className="card p-4 sm:p-6">
         <div className="flex gap-2 flex-wrap mb-3">
           <CategoryBadge q={q} />
           <SourceBadge q={q} />
@@ -288,7 +300,7 @@ export default function QuestionPlayer({
         <button
           onClick={() => setCurrent((c) => Math.max(0, c - 1))}
           disabled={current === 0}
-          className="px-4 py-2 rounded-lg border border-slate-300 text-sm bg-white disabled:opacity-40"
+          className="btn-ghost px-4 py-2 text-sm"
         >
           ← 前へ
         </button>
@@ -296,15 +308,15 @@ export default function QuestionPlayer({
           current === questions.length - 1 && currentRevealed ? (
             <button
               onClick={finishImmediate}
-              className="px-6 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold"
+              className="btn-primary px-6 py-2 text-sm"
             >
-              結果を見る
+              結果を見る ✨
             </button>
           ) : (
             <button
               onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
               disabled={!currentRevealed}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold disabled:opacity-40"
+              className="btn-primary px-5 py-2 text-sm"
             >
               次へ →
             </button>
@@ -313,14 +325,14 @@ export default function QuestionPlayer({
           <>
             <button
               onClick={handleSubmitClick}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm text-white font-bold shadow-lg shadow-emerald-600/25 transition-all hover:brightness-110 active:scale-[0.98]"
             >
               採点する
             </button>
             <button
               onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
               disabled={current === questions.length - 1}
-              className="px-4 py-2 rounded-lg border border-slate-300 text-sm bg-white disabled:opacity-40"
+              className="btn-ghost px-4 py-2 text-sm"
             >
               次へ →
             </button>
@@ -329,19 +341,19 @@ export default function QuestionPlayer({
       </div>
 
       {!immediateFeedback && (
-        <div className="mt-6 bg-white rounded-xl border border-slate-200 p-3">
+        <div className="mt-6 card p-3">
           <div className="text-xs text-slate-500 mb-2">問題一覧 (タップで移動)</div>
           <div className="grid grid-cols-10 gap-1.5">
             {questions.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrent(i)}
-                className={`h-8 rounded text-xs font-medium ${
+                className={`h-8 rounded-lg text-xs font-medium transition-colors ${
                   i === current
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-bold shadow-sm"
                     : answers[i] !== null
-                      ? "bg-indigo-100 text-indigo-700"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                      : "bg-slate-100 text-slate-400 hover:bg-slate-200"
                 }`}
               >
                 {i + 1}
@@ -383,24 +395,28 @@ function ResultView({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 text-center">
-        <div className="text-sm text-slate-500 mb-1">正答率</div>
-        <div
-          className={`text-5xl font-bold ${rate >= 60 ? "text-emerald-600" : "text-rose-600"}`}
-        >
-          {rate}%
+      <div
+        className={`rounded-2xl p-8 text-center text-white shadow-xl ${
+          rate >= 60
+            ? "bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 shadow-indigo-600/30"
+            : "bg-gradient-to-br from-slate-600 to-slate-700 shadow-slate-600/30"
+        }`}
+      >
+        <div className="text-sm opacity-80 mb-1">
+          {rate >= 60 ? "🎉 お見事!" : "💪 あと少し!"} 正答率
         </div>
-        <div className="text-slate-600 mt-1">
+        <div className="text-6xl font-extrabold tracking-tight">{rate}%</div>
+        <div className="mt-2 opacity-90">
           {correct} / {questions.length} 問正解
           {questions.length >= 80 && (
-            <span className="block text-xs mt-1 text-slate-400">
+            <span className="block text-xs mt-1 opacity-70">
               (本試験の合格基準は 60% 以上)
             </span>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="card p-4">
         <div className="font-bold text-sm mb-3">分野別</div>
         <div className="space-y-2">
           {Object.entries(fieldStats).map(([name, s]) => {
@@ -429,20 +445,17 @@ function ResultView({
         {wrong.length > 0 && onRetryWrong && (
           <button
             onClick={() => onRetryWrong(wrong)}
-            className="flex-1 py-2.5 rounded-lg bg-rose-600 text-white text-sm font-bold"
+            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-bold shadow-lg shadow-rose-500/25 transition-all hover:brightness-110 active:scale-[0.98]"
           >
-            間違えた {wrong.length} 問を解き直す
+            🔁 間違えた {wrong.length} 問を解き直す
           </button>
         )}
-        <button
-          onClick={onExit}
-          className="flex-1 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-bold"
-        >
+        <button onClick={onExit} className="btn-ghost flex-1 py-2.5 text-sm">
           終了する
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="card p-4">
         <div className="font-bold text-sm mb-3">全問題の解説 (タップで開閉)</div>
         <div className="space-y-1.5">
           {questions.map((q, i) => {

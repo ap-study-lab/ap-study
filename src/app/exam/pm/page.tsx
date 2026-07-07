@@ -34,7 +34,7 @@ function PmListInner() {
             <Link
               key={pm.id}
               href={`/exam/pm/${pm.id}`}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow"
+              className="card card-hover p-4"
             >
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
                 <span className="text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 font-medium">
