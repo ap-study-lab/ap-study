@@ -2,6 +2,8 @@
 
 応用情報技術者試験(AP)の学習用Webアプリ。過去問ベースの問題とAI作成のオリジナル問題で演習でき、成績・苦手分野・間違えた問題を記録します。スマホブラウザ対応。
 
+**公開URL: https://orbitrr1423-tech.github.io/ap-study/**
+
 ## 機能
 
 - **模擬試験(午前)**: 本試験と同じ80問構成(テクノロジ50/マネジメント10/ストラテジ20)、150分タイマー付き。全問解答後にまとめて採点、全問にわかりやすい解説付き
@@ -26,9 +28,9 @@
 
 ## 技術構成
 
-- Next.js (App Router) + TypeScript + Tailwind CSS
+- Next.js (App Router、静的エクスポート) + TypeScript + Tailwind CSS
 - Supabase (認証 + 学習記録の保存、`ap_` プレフィックスのテーブルを使用)
-- Vercel でホスティング
+- GitHub Pages でホスティング(mainへのpushで自動デプロイ)
 
 ## 開発
 
