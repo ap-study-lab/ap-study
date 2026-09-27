@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import QuestionPlayer from "@/components/QuestionPlayer";
@@ -10,12 +10,26 @@ import {
   getCategories,
   shuffle,
 } from "@/lib/questions";
+import {
+  clearExam,
+  formatRemaining,
+  getExamServerSnapshot,
+  getExamSnapshot,
+  subscribeExam,
+} from "@/lib/examStorage";
+import type { RestoredExam } from "@/lib/examStorage";
 import type { AmQuestion, SourceFilter } from "@/lib/types";
 import { FIELD_NAMES } from "@/lib/types";
 
 type Phase =
   | { kind: "setup" }
-  | { kind: "playing"; questions: AmQuestion[]; mock: boolean };
+  | {
+      kind: "playing";
+      questions: AmQuestion[];
+      mock: boolean;
+      /** 中断した演習の続きから始める場合 */
+      restored?: RestoredExam;
+    };
 
 function AmExamInner() {
   const params = useSearchParams();
@@ -25,6 +39,25 @@ function AmExamInner() {
   const [quickCount, setQuickCount] = useState(10);
   const [categories, setCategories] = useState<string[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
+  // localStorage はブラウザにしか無いので、外部ストアとして購読する
+  // (静的HTML側は必ず null になるので、ハイドレーションのズレが起きない)
+  const saved = useSyncExternalStore(subscribeExam, getExamSnapshot, getExamServerSnapshot);
+
+  function resume() {
+    if (!saved) return;
+    setPhase({
+      kind: "playing",
+      questions: saved.questions,
+      mock: saved.mode === "mock",
+      restored: saved,
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function discardSaved() {
+    if (!confirm("中断した模擬試験を破棄します。よろしいですか?")) return;
+    clearExam();
+  }
 
   function start() {
     if (tab === "mock") {
@@ -44,9 +77,16 @@ function AmExamInner() {
       <QuestionPlayer
         questions={phase.questions}
         mode={phase.mock ? "mock" : "quick"}
-        sourceFilter={sourceFilter}
-        immediateFeedback={!phase.mock}
-        timeLimitMinutes={phase.mock ? 150 : undefined}
+        sourceFilter={phase.restored?.sourceFilter ?? sourceFilter}
+        timeLimitMinutes={
+          phase.restored
+            ? (phase.restored.timeLimitMinutes ?? undefined)
+            : phase.mock
+              ? 150
+              : undefined
+        }
+        restored={phase.restored}
+        persist={phase.mock}
         onExit={() => setPhase({ kind: "setup" })}
         onRetryWrong={(wrong) =>
           setPhase({ kind: "playing", questions: shuffle(wrong), mock: false })
@@ -60,6 +100,26 @@ function AmExamInner() {
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold">午前演習</h1>
+
+      {saved && (
+        <div className="card p-4 border-2 border-amber-300 bg-amber-50/60 space-y-3">
+          <div>
+            <div className="font-bold text-sm text-amber-800">⏸ 中断した模擬試験があります</div>
+            <p className="text-xs text-amber-700 mt-1">
+              {saved.revealedCount} / {saved.questions.length} 問 解答済み
+              {saved.remainingSec !== null && ` ・ 残り ${formatRemaining(saved.remainingSec)}`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={resume} className="btn-primary flex-1 py-2.5 text-sm">
+              続きから再開する ▶
+            </button>
+            <button onClick={discardSaved} className="btn-ghost px-4 py-2.5 text-sm">
+              破棄
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex rounded-2xl p-1 bg-slate-200/70 gap-1">
         <button
@@ -111,7 +171,8 @@ function AmExamInner() {
         {tab === "mock" ? (
           <p className="text-sm text-slate-500 leading-relaxed">
             本試験と同じ構成: 80問 / 150分 / テクノロジ50問・マネジメント10問・ストラテジ20問。
-            全問解答後にまとめて採点され、全問に解説が付きます。
+            1問解答するごとに正誤と解説が表示されます(解答した問題は変更できません)。
+            タイマーは一時停止でき、ブラウザを閉じても続きから再開できます。
           </p>
         ) : (
           <>

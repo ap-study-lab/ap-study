@@ -42,7 +42,6 @@ function ReviewInner() {
         questions={playing}
         mode="review"
         sourceFilter="all"
-        immediateFeedback
         onExit={() => {
           setPlaying(null);
           fetchAttempts().then(setAttempts);

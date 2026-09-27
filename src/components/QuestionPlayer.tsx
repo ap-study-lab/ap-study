@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AmQuestion, AnswerRecord, SessionMode, SourceFilter } from "@/lib/types";
 import { CHOICE_LABELS, FIELD_NAMES } from "@/lib/types";
 import { createSession, finishSession, recordAttempts } from "@/lib/db";
+import { clearExam, formatRemaining, saveExam } from "@/lib/examStorage";
+import type { RestoredExam } from "@/lib/examStorage";
 
 interface Props {
   questions: AmQuestion[];
   mode: SessionMode;
   sourceFilter: SourceFilter;
-  /** true: 1問ごとに正誤+解説を表示 / false: 全問解答後にまとめて採点(模試) */
-  immediateFeedback: boolean;
+  /** 指定すると制限時間付き(一時停止可)になる */
   timeLimitMinutes?: number;
+  /** 中断した演習の続きから始める場合の保存データ */
+  restored?: RestoredExam | null;
+  /** 進行状況を localStorage に保存し、リロード後に再開できるようにする */
+  persist?: boolean;
   onExit: () => void;
   onRetryWrong?: (wrong: AmQuestion[]) => void;
 }
@@ -120,33 +125,15 @@ function ChoiceList({
   );
 }
 
-function Timer({ minutes, onExpire }: { minutes: number; onExpire: () => void }) {
-  const [remaining, setRemaining] = useState(minutes * 60);
-  const expiredRef = useRef(false);
-  useEffect(() => {
-    const t = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1 && !expiredRef.current) {
-          expiredRef.current = true;
-          clearInterval(t);
-          onExpire();
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const mm = Math.floor(remaining / 60);
-  const ss = remaining % 60;
+function TimerBadge({ remaining, running }: { remaining: number; running: boolean }) {
+  const cls = !running
+    ? "bg-amber-100 text-amber-700"
+    : remaining < 600
+      ? "bg-rose-100 text-rose-700"
+      : "bg-slate-100 text-slate-600";
   return (
-    <span
-      className={`font-mono text-sm px-2 py-1 rounded ${
-        remaining < 600 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"
-      }`}
-    >
-      残り {mm}:{String(ss).padStart(2, "0")}
+    <span className={`font-mono text-sm px-2 py-1 rounded ${cls}`}>
+      残り {formatRemaining(remaining)}
     </span>
   );
 }
@@ -155,22 +142,42 @@ export default function QuestionPlayer({
   questions,
   mode,
   sourceFilter,
-  immediateFeedback,
   timeLimitMinutes,
+  restored,
+  persist = false,
   onExit,
   onRetryWrong,
 }: Props) {
-  const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() =>
-    questions.map(() => null)
+  const [current, setCurrent] = useState(restored?.current ?? 0);
+  const [answers, setAnswers] = useState<(number | null)[]>(
+    () => restored?.answers ?? questions.map(() => null)
   );
-  const [revealedCount, setRevealedCount] = useState(0); // immediate mode: 何問目まで解説表示済みか
+  // 何問目まで解答(=解説表示)済みか
+  const [revealedCount, setRevealedCount] = useState(restored?.revealedCount ?? 0);
   const [finished, setFinished] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(() => {
+    if (restored && restored.remainingSec !== null) return restored.remainingSec;
+    return timeLimitMinutes ? timeLimitMinutes * 60 : null;
+  });
+  // 中断から戻ったときは止めた状態で開く(開いた瞬間に時間が減り始めないように)
+  const [running, setRunning] = useState(() => !restored);
   const sessionIdRef = useRef<string | null>(null);
   const sessionReady = useRef<Promise<void> | null>(null);
+  const finishingRef = useRef(false);
+
+  const timed = remaining !== null;
+  const paused = timed && !running;
+  const q = questions[current];
+  const answered = answers.filter((a) => a !== null).length;
+  const currentRevealed = current < revealedCount;
 
   useEffect(() => {
-    if (immediateFeedback && !sessionReady.current) {
+    if (sessionReady.current) return;
+    if (restored?.sessionId) {
+      // 続きから: 同じ ap_sessions 行に解答を積み足す
+      sessionIdRef.current = restored.sessionId;
+      sessionReady.current = Promise.resolve();
+    } else {
       sessionReady.current = createSession(mode, sourceFilter).then((id) => {
         sessionIdRef.current = id;
       });
@@ -178,16 +185,83 @@ export default function QuestionPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const q = questions[current];
-  const answered = answers.filter((a) => a !== null).length;
-  const currentRevealed = immediateFeedback && current < revealedCount;
+  // --- 進行状況の保存 ---
+  const stateRef = useRef({ current, answers, revealedCount, remaining });
+  // 5秒おきの保存や pagehide からも最新値を読めるようにしておく
+  // (この効果は下の保存用 useEffect より先に宣言しておくこと)
+  useEffect(() => {
+    stateRef.current = { current, answers, revealedCount, remaining };
+  }, [current, answers, revealedCount, remaining]);
+
+  const save = useCallback(() => {
+    if (!persist || finished) return;
+    const s = stateRef.current;
+    saveExam({
+      mode,
+      sourceFilter,
+      questionIds: questions.map((qq) => qq.id),
+      answers: s.answers,
+      revealedCount: s.revealedCount,
+      current: s.current,
+      timeLimitMinutes: timeLimitMinutes ?? null,
+      remainingSec: s.remaining,
+      sessionId: sessionIdRef.current,
+    });
+  }, [persist, finished, mode, sourceFilter, questions, timeLimitMinutes]);
+
+  // 解答・移動・一時停止のたびに保存
+  useEffect(() => {
+    save();
+  }, [save, current, answers, revealedCount, running]);
+
+  // 残り時間は毎秒変わるので、書き込みは5秒おきに間引く
+  useEffect(() => {
+    if (!persist || finished || !running || !timed) return;
+    const t = setInterval(save, 5000);
+    return () => clearInterval(t);
+  }, [persist, finished, running, timed, save]);
+
+  // スマホでタブを閉じる・アプリを切り替える直前にも保存しておく
+  useEffect(() => {
+    if (!persist) return;
+    const onHide = () => save();
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [persist, save]);
+
+  // --- タイマー ---
+  useEffect(() => {
+    if (!running || finished || !timed) return;
+    const t = setInterval(() => {
+      setRemaining((r) => (r === null ? null : Math.max(0, r - 1)));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [running, finished, timed]);
+
+  async function finish() {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    const correct = questions.filter((qq, i) => answers[i] === qq.answer).length;
+    if (sessionReady.current) await sessionReady.current;
+    if (sessionIdRef.current) {
+      await finishSession(sessionIdRef.current, questions.length, correct);
+    }
+    if (persist) clearExam();
+    setFinished(true);
+  }
+
+  // 時間切れは自動採点
+  useEffect(() => {
+    if (remaining === 0 && !finished) finish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remaining, finished]);
 
   async function selectChoice(i: number) {
-    if (finished) return;
+    if (finished || paused) return;
     const next = [...answers];
     next[current] = i;
     setAnswers(next);
-    if (immediateFeedback && current >= revealedCount) {
+    if (current >= revealedCount) {
       setRevealedCount(current + 1);
       // 即時記録 (セッション作成完了を待ってから)
       if (sessionReady.current) await sessionReady.current;
@@ -195,38 +269,29 @@ export default function QuestionPlayer({
     }
   }
 
-  async function finishImmediate() {
-    const correct = questions.filter((qq, i) => answers[i] === qq.answer).length;
-    if (sessionReady.current) await sessionReady.current;
-    if (sessionIdRef.current) {
-      await finishSession(sessionIdRef.current, questions.length, correct);
-    }
-    setFinished(true);
-  }
-
-  async function submitMock() {
-    const records = questions
-      .map((qq, i) =>
-        answers[i] !== null ? toRecord(qq, answers[i] as number) : null
-      )
-      .filter((r): r is AnswerRecord => r !== null);
-    const correct = records.filter((r) => r.isCorrect).length;
-    const sessionId = await createSession(mode, sourceFilter);
-    if (sessionId) {
-      await recordAttempts(records, sessionId);
-      await finishSession(sessionId, questions.length, correct);
-    }
-    setFinished(true);
-  }
-
-  function handleSubmitClick() {
+  function handleFinishEarly() {
     const unanswered = questions.length - answered;
-    if (unanswered > 0) {
-      if (!confirm(`未解答が ${unanswered} 問あります。採点しますか?\n(未解答は不正解として扱われます)`)) {
+    if (
+      unanswered > 0 &&
+      !confirm(
+        `未解答が ${unanswered} 問あります。採点しますか?\n(未解答は不正解として扱われます)`
+      )
+    ) {
+      return;
+    }
+    finish();
+  }
+
+  function handleExit() {
+    if (persist) {
+      if (!confirm("演習を中断します。\n進行状況は保存され、次回「続きから再開」できます。")) {
         return;
       }
+      save();
+    } else if (!confirm("演習を中断して戻りますか?")) {
+      return;
     }
-    submitMock();
+    onExit();
   }
 
   if (questions.length === 0) {
@@ -257,16 +322,17 @@ export default function QuestionPlayer({
         <div className="text-sm text-slate-500 font-medium">
           問{current + 1} / {questions.length}
         </div>
-        <div className="flex items-center gap-2">
-          {timeLimitMinutes && !immediateFeedback && (
-            <Timer minutes={timeLimitMinutes} onExpire={submitMock} />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {timed && <TimerBadge remaining={remaining as number} running={running} />}
+          {timed && (
+            <button
+              onClick={() => setRunning((r) => !r)}
+              className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 hover:border-indigo-400 hover:text-indigo-700 transition-colors"
+            >
+              {running ? "⏸ 一時停止" : "▶ 再開"}
+            </button>
           )}
-          <button
-            onClick={() => {
-              if (confirm("演習を中断して戻りますか?")) onExit();
-            }}
-            className="text-xs text-slate-400 hover:text-slate-600"
-          >
+          <button onClick={handleExit} className="text-xs text-slate-400 hover:text-slate-600">
             中断
           </button>
         </div>
@@ -279,86 +345,100 @@ export default function QuestionPlayer({
         />
       </div>
 
-      <div className="card p-4 sm:p-6">
-        <div className="flex gap-2 flex-wrap mb-3">
-          <CategoryBadge q={q} />
-          <SourceBadge q={q} />
+      {paused ? (
+        <div className="card p-8 text-center space-y-4">
+          <div className="text-4xl">⏸</div>
+          <div>
+            <div className="font-bold">一時停止中</div>
+            <p className="text-sm text-slate-500 mt-1">
+              残り {formatRemaining(remaining as number)} / {answered} 問解答済み
+            </p>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            問題文は伏せています。
+            <br />
+            このままブラウザを閉じても、次に開いたときここから再開できます。
+          </p>
+          <button onClick={() => setRunning(true)} className="btn-primary px-6 py-2.5 text-sm">
+            ▶ 再開する
+          </button>
         </div>
-        <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4 font-medium">
-          {q.question}
-        </p>
-        <ChoiceList
-          q={q}
-          selected={answers[current]}
-          revealed={currentRevealed}
-          onSelect={selectChoice}
-        />
-        {currentRevealed && <ExplanationBox q={q} selected={answers[current]} />}
-      </div>
+      ) : (
+        <div className="card p-4 sm:p-6">
+          <div className="flex gap-2 flex-wrap mb-3">
+            <CategoryBadge q={q} />
+            <SourceBadge q={q} />
+          </div>
+          <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4 font-medium">
+            {q.question}
+          </p>
+          <ChoiceList
+            q={q}
+            selected={answers[current]}
+            revealed={currentRevealed}
+            onSelect={selectChoice}
+          />
+          {currentRevealed && <ExplanationBox q={q} selected={answers[current]} />}
+        </div>
+      )}
 
-      <div className="flex items-center justify-between mt-4 gap-2">
-        <button
-          onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-          disabled={current === 0}
-          className="btn-ghost px-4 py-2 text-sm"
-        >
-          ← 前へ
-        </button>
-        {immediateFeedback ? (
-          current === questions.length - 1 && currentRevealed ? (
-            <button
-              onClick={finishImmediate}
-              className="btn-primary px-6 py-2 text-sm"
-            >
-              結果を見る ✨
-            </button>
-          ) : (
-            <button
-              onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-              disabled={!currentRevealed}
-              className="btn-primary px-5 py-2 text-sm"
-            >
-              次へ →
-            </button>
-          )
-        ) : (
-          <>
-            <button
-              onClick={handleSubmitClick}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm text-white font-bold shadow-lg shadow-emerald-600/25 transition-all hover:brightness-110 active:scale-[0.98]"
-            >
-              採点する
-            </button>
-            <button
-              onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-              disabled={current === questions.length - 1}
-              className="btn-ghost px-4 py-2 text-sm"
-            >
-              次へ →
-            </button>
-          </>
-        )}
-      </div>
-
-      {!immediateFeedback && (
-        <div className="mt-6 card p-3">
-          <div className="text-xs text-slate-500 mb-2">問題一覧 (タップで移動)</div>
-          <div className="grid grid-cols-10 gap-1.5">
-            {questions.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrent(i)}
-                className={`h-8 rounded-lg text-xs font-medium transition-colors ${
-                  i === current
-                    ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-bold shadow-sm"
-                    : answers[i] !== null
-                      ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
-                      : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                }`}
-              >
-                {i + 1}
+      {!paused && (
+        <div className="flex items-center justify-between mt-4 gap-2">
+          <button
+            onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+            disabled={current === 0}
+            className="btn-ghost px-4 py-2 text-sm"
+          >
+            ← 前へ
+          </button>
+          <div className="flex items-center gap-2">
+            {timed && !(current === questions.length - 1 && currentRevealed) && (
+              <button onClick={handleFinishEarly} className="btn-ghost px-3 py-2 text-xs">
+                終了して採点
               </button>
-            ))}
+            )}
+            {current === questions.length - 1 && currentRevealed ? (
+              <button onClick={finish} className="btn-primary px-6 py-2 text-sm">
+                結果を見る ✨
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
+                disabled={!currentRevealed}
+                className="btn-primary px-5 py-2 text-sm"
+              >
+                次へ →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {timed && !paused && (
+        <div className="mt-6 card p-3">
+          <div className="text-xs text-slate-500 mb-2">問題一覧 (解答済みの問題に戻れます)</div>
+          <div className="grid grid-cols-10 gap-1.5">
+            {questions.map((_, i) => {
+              const reachable = i <= revealedCount;
+              return (
+                <button
+                  key={i}
+                  onClick={() => reachable && setCurrent(i)}
+                  disabled={!reachable}
+                  className={`h-8 rounded-lg text-xs font-medium transition-colors ${
+                    i === current
+                      ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-bold shadow-sm"
+                      : answers[i] !== null
+                        ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                        : reachable
+                          ? "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                          : "bg-slate-50 text-slate-300 cursor-not-allowed"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
