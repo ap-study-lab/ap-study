@@ -34,10 +34,6 @@ function isIndex(v: unknown, maxExclusive: number): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0 && v < maxExclusive;
 }
 
-/**
- * localStorage の内容は書き換えられうるので、読み込み時に必ず検証する。
- * 少しでも壊れていれば復帰させず null を返す(壊れたデータで演習が始まる方が困る)。
- */
 function parse(raw: string): RestoredExam | null {
   let data: unknown;
   try {
@@ -45,6 +41,14 @@ function parse(raw: string): RestoredExam | null {
   } catch {
     return null;
   }
+  return parseExamPayload(data);
+}
+
+/**
+ * localStorage もサーバーから来た JSON も、中身は信用せず同じ検証を通す。
+ * 少しでも壊れていれば復帰させず null を返す(壊れたデータで演習が始まる方が困る)。
+ */
+export function parseExamPayload(data: unknown): RestoredExam | null {
   if (typeof data !== "object" || data === null) return null;
   const d = data as Record<string, unknown>;
 
@@ -130,14 +134,25 @@ function notify() {
 }
 
 export function saveExam(state: Omit<SavedExam, "v" | "savedAt">): void {
+  writeExam({ v: 1, ...state, savedAt: new Date().toISOString() });
+}
+
+/** 別端末から取り込んだ状態を、保存時刻をそのままにして書き込む */
+export function writeExam(payload: SavedExam): void {
   if (typeof window === "undefined") return;
-  const payload: SavedExam = { v: 1, ...state, savedAt: new Date().toISOString() };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // プライベートモードや容量超過では保存できないが、演習自体は続行させる
   }
   notify();
+}
+
+/** 保存・送信する形(問題本体は持たない)に落とす */
+export function toPayload(restored: RestoredExam): SavedExam {
+  const { questions: _questions, ...payload } = restored;
+  void _questions;
+  return payload;
 }
 
 export function loadExam(): RestoredExam | null {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import QuestionPlayer from "@/components/QuestionPlayer";
@@ -17,6 +17,7 @@ import {
   getExamSnapshot,
   subscribeExam,
 } from "@/lib/examStorage";
+import { deleteRemoteProgress, syncProgressOnLoad } from "@/lib/progressSync";
 import type { RestoredExam } from "@/lib/examStorage";
 import type { AmQuestion, SourceFilter } from "@/lib/types";
 import { FIELD_NAMES } from "@/lib/types";
@@ -31,6 +32,14 @@ type Phase =
       restored?: RestoredExam;
     };
 
+function formatSavedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
 function AmExamInner() {
   const params = useSearchParams();
   const initialMode = params.get("mode") === "quick" ? "quick" : "mock";
@@ -42,6 +51,14 @@ function AmExamInner() {
   // localStorage はブラウザにしか無いので、外部ストアとして購読する
   // (静的HTML側は必ず null になるので、ハイドレーションのズレが起きない)
   const saved = useSyncExternalStore(subscribeExam, getExamSnapshot, getExamServerSnapshot);
+
+  // 他の端末で進めた中断データを取り込む。取り込めた時点で上のストアが更新される
+  useEffect(() => {
+    void syncProgressOnLoad();
+    const onOnline = () => void syncProgressOnLoad();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
 
   function resume() {
     if (!saved) return;
@@ -55,8 +72,9 @@ function AmExamInner() {
   }
 
   function discardSaved() {
-    if (!confirm("中断した模擬試験を破棄します。よろしいですか?")) return;
+    if (!confirm("中断した模擬試験を破棄します。\n他の端末からも再開できなくなります。")) return;
     clearExam();
+    void deleteRemoteProgress();
   }
 
   function start() {
@@ -108,6 +126,9 @@ function AmExamInner() {
             <p className="text-xs text-amber-700 mt-1">
               {saved.revealedCount} / {saved.questions.length} 問 解答済み
               {saved.remainingSec !== null && ` ・ 残り ${formatRemaining(saved.remainingSec)}`}
+            </p>
+            <p className="text-[11px] text-amber-600/80 mt-0.5">
+              最終保存 {formatSavedAt(saved.savedAt)}
             </p>
           </div>
           <div className="flex gap-2">

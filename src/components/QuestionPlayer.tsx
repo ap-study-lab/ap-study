@@ -6,6 +6,11 @@ import { CHOICE_LABELS, FIELD_NAMES } from "@/lib/types";
 import { createSession, finishSession, recordAttempts } from "@/lib/db";
 import { clearExam, formatRemaining, saveExam } from "@/lib/examStorage";
 import type { RestoredExam } from "@/lib/examStorage";
+import {
+  deleteRemoteProgress,
+  flushProgressNow,
+  scheduleProgressPush,
+} from "@/lib/progressSync";
 
 interface Props {
   questions: AmQuestion[];
@@ -207,12 +212,20 @@ export default function QuestionPlayer({
       remainingSec: s.remaining,
       sessionId: sessionIdRef.current,
     });
+    // 他の端末でも続きから再開できるようにサーバーへ送る(まとめて後送り)
+    scheduleProgressPush();
   }, [persist, finished, mode, sourceFilter, questions, timeLimitMinutes]);
 
   // 解答・移動・一時停止のたびに保存
   useEffect(() => {
     save();
   }, [save, current, answers, revealedCount, running]);
+
+  // 一時停止・再開の時点は確実にサーバーへ反映しておく(端末を持ち替える場面なので)
+  useEffect(() => {
+    if (!persist) return;
+    void flushProgressNow();
+  }, [persist, running]);
 
   // 残り時間は毎秒変わるので、書き込みは5秒おきに間引く
   useEffect(() => {
@@ -246,7 +259,11 @@ export default function QuestionPlayer({
     if (sessionIdRef.current) {
       await finishSession(sessionIdRef.current, questions.length, correct);
     }
-    if (persist) clearExam();
+    if (persist) {
+      clearExam();
+      // 他の端末に中断データが残らないようにサーバー側も消す
+      void deleteRemoteProgress();
+    }
     setFinished(true);
   }
 
@@ -284,10 +301,13 @@ export default function QuestionPlayer({
 
   function handleExit() {
     if (persist) {
-      if (!confirm("演習を中断します。\n進行状況は保存され、次回「続きから再開」できます。")) {
+      if (
+        !confirm("演習を中断します。\n進行状況は保存され、他の端末からでも続きから再開できます。")
+      ) {
         return;
       }
       save();
+      void flushProgressNow();
     } else if (!confirm("演習を中断して戻りますか?")) {
       return;
     }
