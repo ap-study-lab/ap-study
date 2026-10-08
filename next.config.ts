@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// GitHub Pages (https://orbitrr1423-tech.github.io/ap-study/) 向けの静的エクスポート設定
+// GitHub Pages (https://ap-study-lab.github.io/ap-study/) 向けの静的エクスポート設定
 const basePath = "/ap-study";
 
 const nextConfig: NextConfig = {

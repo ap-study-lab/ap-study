@@ -2,7 +2,7 @@
 
 応用情報技術者試験(AP)の学習用Webアプリ。過去問ベースの問題とAI作成のオリジナル問題で演習でき、成績・苦手分野・間違えた問題を記録します。スマホブラウザ対応。
 
-**公開URL: https://orbitrr1423-tech.github.io/ap-study/**
+**公開URL: https://ap-study-lab.github.io/ap-study/**
 
 ## 機能
 
